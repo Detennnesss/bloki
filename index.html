@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html lang="ru" data-theme="autumn">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
@@ -15,6 +15,27 @@
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; }
   @property --hue { syntax: '<number>'; inherits: true; initial-value: 230; }
+  /* насыщенность (s) и светлота (l) фона - числа, чтобы смена темы шла плавным переходом */
+  @property --s1 { syntax: '<number>'; inherits: true; initial-value: 48; }
+  @property --l1 { syntax: '<number>'; inherits: true; initial-value: 30; }
+  @property --s2 { syntax: '<number>'; inherits: true; initial-value: 38; }
+  @property --l2 { syntax: '<number>'; inherits: true; initial-value: 17; }
+  @property --s3 { syntax: '<number>'; inherits: true; initial-value: 45; }
+  @property --l3 { syntax: '<number>'; inherits: true; initial-value: 6; }
+  @property --c { syntax: '<color>'; inherits: false; initial-value: transparent; }
+  :root, :root[data-theme="autumn"] { --s1: 48; --l1: 30; --s2: 38; --l2: 17; --s3: 45; --l3: 6; }
+  :root[data-theme="standard"] { --s1: 75; --l1: 52; --s2: 65; --l2: 30; --s3: 70; --l3: 12; }
+  :root {
+    transition: --hue 1.2s ease, --s1 .9s ease, --l1 .9s ease, --s2 .9s ease, --l2 .9s ease, --s3 .9s ease, --l3 .9s ease;
+  }
+  /* осенний декор плавно исчезает в стандартной теме */
+  .moon, #leaves, .web { transition: opacity .9s ease; }
+  :root[data-theme="standard"] .moon, :root[data-theme="standard"] #leaves, :root[data-theme="standard"] .web { opacity: 0; }
+  :root[data-theme="standard"] .leaf { animation-play-state: paused; }
+  /* на время смены темы цвета блоков перетекают, а не щёлкают */
+  :root.recolor .cell { transition: --c .8s ease; }
+  #tray.swap { animation: traySwap .7s ease; }
+  @keyframes traySwap { from { opacity: 0; } to { opacity: 1; } }
   :root {
     --hue: 230;
     --glass-bg: linear-gradient(135deg, rgba(255,255,255,.22), rgba(255,255,255,.06));
@@ -26,10 +47,9 @@
   }
   body {
     background:
-      radial-gradient(circle at 50% 0%, hsl(var(--hue) 48% 30%) 0, transparent 70%),
-      linear-gradient(160deg, hsl(var(--hue) 38% 17%), hsl(var(--hue) 45% 6%));
+      radial-gradient(circle at 50% 0%, hsl(var(--hue) calc(var(--s1) * 1%) calc(var(--l1) * 1%)) 0, transparent 70%),
+      linear-gradient(160deg, hsl(var(--hue) calc(var(--s2) * 1%) calc(var(--l2) * 1%)), hsl(var(--hue) calc(var(--s3) * 1%) calc(var(--l3) * 1%)));
     background-attachment: fixed;
-    transition: --hue 1.2s ease;
     color: #fff;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
@@ -139,6 +159,11 @@
   }
   .piece { display: grid; gap: 2px; }
   .hole { background: transparent; }
+  .piece.enter { animation: pieceIn .42s cubic-bezier(.2,1.3,.4,1) backwards; }
+  @keyframes pieceIn {
+    from { opacity: 0; transform: translateY(46px) scale(.55); }
+    to { opacity: 1; transform: none; }
+  }
   #tray { display: flex; justify-content: space-around; align-items: center; }
   .slot { display: flex; align-items: center; justify-content: center; touch-action: none; }
   .slot.hidden-piece .piece { opacity: .2; }
@@ -216,6 +241,7 @@
 <div id="settings" class="overlay">
   <div class="card">
     <h2>Настройки</h2>
+    <div class="set-row"><span>Осенняя тема</span><button class="sw" id="swTheme" role="switch" aria-label="Осенняя тема"></button></div>
     <div class="set-row"><span>Музыка</span><button class="sw" id="swMusic" role="switch" aria-label="Музыка"></button></div>
     <div class="set-row"><span>Звуковые эффекты</span><button class="sw" id="swSfx" role="switch" aria-label="Звуковые эффекты"></button></div>
     <button id="settingsClose">Готово</button>

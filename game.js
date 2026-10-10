@@ -2,8 +2,19 @@
   // ====== НАСТРОЙКИ (можно менять) ======
   const N = 8;                 // размер поля
   const GAP = 2, PAD = 4;      // зазор между клетками и отступ поля
-  // осенняя палитра, приглушённая и тёмная: ржавый, тыквенный, горчичный, оливковый, хвойный, слива, фиолетовый
-  const COLORS = ['#b3402f', '#c9692a', '#cf9a33', '#7d8a37', '#3f7d73', '#8a3f6b', '#5f4b94'];
+  // темы: autumn - осенняя (приглушённая и тёмная), standard - исходная яркая
+  const THEME_KEY = 'blocks_theme_v1';
+  const PALETTES = {
+    // ржавый, тыквенный, горчичный, оливковый, хвойный, слива, фиолетовый
+    autumn: ['#b3402f', '#c9692a', '#cf9a33', '#7d8a37', '#3f7d73', '#8a3f6b', '#5f4b94'],
+    standard: ['#ff5d6c', '#ff9f43', '#ffd93d', '#4cd97b', '#3ec6ff', '#7b83ff', '#c765ff']
+  };
+  const THEME_COLOR = { autumn: '#1c120d', standard: '#141a3a' }; // цвет строки состояния в браузере
+  let theme = (() => { try { return localStorage.getItem(THEME_KEY) === 'standard' ? 'standard' : 'autumn'; } catch (e) { return 'autumn'; } })();
+  let COLORS = PALETTES[theme];
+  document.documentElement.dataset.theme = theme;
+  const themeMeta = document.querySelector('meta[name="theme-color"]');
+  if (themeMeta) themeMeta.setAttribute('content', THEME_COLOR[theme]);
   const TRAY_GAP = 14;         // минимальный зазор между фигурами внизу, px
   const ASSIST_FROM = 0.30;    // до такой заполненности поля (доля клеток) помощь минимальна
   const ASSIST_FULL = 0.65;    // начиная с такой заполненности помощь максимальна
@@ -213,6 +224,7 @@
       if (solvable(grid, set, { n: 4000 })) break;
     }
     pieces = set;
+    animateTray = true; // новые фигуры появляются с анимацией
   }
 
   function anyFits() {
@@ -262,6 +274,7 @@
     }
     return el;
   }
+  let animateTray = false;
   function renderTray() {
     // три ячейки по ширине поля с зазором между ними, чтобы даже длинные фигуры (5 клеток) не соприкасались
     const bw = cell * N + GAP * (N - 1) + PAD * 2;
@@ -271,8 +284,13 @@
     slots.forEach((slot, i) => {
       slot.style.width = slot.style.height = size + 'px';
       slot.innerHTML = '';
-      if (pieces[i]) slot.appendChild(buildPiece(pieces[i], small));
+      if (pieces[i]) {
+        const pe = buildPiece(pieces[i], small);
+        if (animateTray) { pe.classList.add("enter"); pe.style.animationDelay = i * 90 + "ms"; }
+        slot.appendChild(pe);
+      }
     });
+    animateTray = false;
   }
   function renderHUD() {
     scoreEl.textContent = score;
@@ -334,6 +352,7 @@
   };
   // ---------- фоновый лёгкий джаз (генерируется на лету, без файлов) ----------
   const MUSIC_KEY = 'blocks_music_v1';
+  const MUSIC_VOL = 0.9;                        // общая громкость музыки
   const BPM = 84, STEP = 60 / BPM / 3;          // сетка триолей: отсюда «свинг»
   const hz = m => 440 * Math.pow(2, (m - 69) / 12);
   // 8 тактов: Dm7 G7 Cmaj7 Am7 | Dm7 G7 Cmaj7 A7. root - бас, v - аккорд, mel - ноты для мелодии
@@ -351,7 +370,7 @@
   let mTimer = null, mStep = 0, mNext = 0, mGain = null, mNoise = null, mRest = 0;
 
   function mOut(a) {
-    if (!mGain) { mGain = a.createGain(); mGain.gain.value = 0.9; mGain.connect(a.destination); }
+    if (!mGain) { mGain = a.createGain(); mGain.gain.value = MUSIC_VOL; mGain.connect(a.destination); }
     return mGain;
   }
   function epiano(m, t, dur, vol) {
@@ -427,14 +446,31 @@
     const a = actx; if (!a) return;
     while (mNext < a.currentTime + 0.3) { musicStep(mStep++, mNext); mNext += STEP; }
   }
+  let mStopT = null;
   function startMusic() {
-    if (!musicOn || !musicStarted || mTimer) return;
+    if (!musicOn || !musicStarted) return;
     const a = audio(); if (!a) return;
-    mOut(a);
-    mNext = a.currentTime + 0.1;
-    mTimer = setInterval(musicTick, 60);
+    clearTimeout(mStopT);
+    const g = mOut(a).gain, now = a.currentTime;
+    g.cancelScheduledValues(now);
+    if (!mTimer) {
+      g.setValueAtTime(0.0001, now);
+      mNext = now + 0.1;
+      mTimer = setInterval(musicTick, 60);
+    } else g.setValueAtTime(Math.max(g.value, 0.0001), now); // музыка ещё не успела затихнуть - просто возвращаем громкость
+    g.linearRampToValueAtTime(MUSIC_VOL, now + 1); // плавное нарастание
   }
-  function stopMusic() { clearInterval(mTimer); mTimer = null; }
+  function stopMusic() { clearInterval(mTimer); mTimer = null; clearTimeout(mStopT); }
+  // плавное затухание (например, при проигрыше), потом остановка
+  function fadeMusic(sec) {
+    if (!mTimer || !mGain || !actx) return;
+    const g = mGain.gain, now = actx.currentTime;
+    g.cancelScheduledValues(now);
+    g.setValueAtTime(Math.max(g.value, 0.0001), now);
+    g.linearRampToValueAtTime(0.0001, now + sec);
+    clearTimeout(mStopT);
+    mStopT = setTimeout(stopMusic, sec * 1000 + 100);
+  }
   document.addEventListener('visibilitychange', () => { document.hidden ? stopMusic() : startMusic(); });
 
   // браузеры разрешают звук только после касания
@@ -444,18 +480,44 @@
   // осенние оттенки: бордовый, ржавый, тыквенный, янтарный, коричневый, «хэллоуинский» фиолетовый
   const HUES = [350, 10, 22, 32, 42, 275];
   const HUE_KEY = 'blocks_hue_v2';
-  const randHue = () => HUES[Math.floor(Math.random() * HUES.length)];
+  const mod360 = h => ((h % 360) + 360) % 360;
+  // в осенней теме оттенки только из списка, в стандартной - любые
+  const randHue = () => theme === 'autumn' ? HUES[Math.floor(Math.random() * HUES.length)] : Math.floor(Math.random() * 360);
   let hue = parseInt(lsGet(HUE_KEY), 10);
-  // при запуске: если есть незавершённая игра - её цвет, иначе случайный из осенних
+  // при запуске: если есть незавершённая игра - её цвет, иначе случайный
   if (isNaN(hue) || !lsGet(SAVE_KEY)) hue = randHue();
   document.documentElement.style.setProperty('--hue', hue);
-  function nextHue() {
-    let target;
-    do { target = randHue(); } while (target === ((hue % 360) + 360) % 360);
+  function setHue(target) {
     // идём кратчайшим путём по кругу, но без накопления, чтобы переход оставался плавным
     hue += ((target - hue) % 360 + 540) % 360 - 180;
     document.documentElement.style.setProperty('--hue', hue);
-    lsSet(HUE_KEY, String(((hue % 360) + 360) % 360));
+    lsSet(HUE_KEY, String(mod360(hue)));
+  }
+  function nextHue() {
+    if (theme === 'standard') { setHue(hue + 50 + Math.floor(Math.random() * 100)); return; }
+    let target;
+    do { target = randHue(); } while (target === mod360(hue));
+    setHue(target);
+  }
+  // смена темы: перекрашиваем поле и фигуры, фон подстраиваем под тему
+  function applyTheme(t) {
+    theme = t;
+    lsSet(THEME_KEY, t);
+    COLORS = PALETTES[t];
+    const root = document.documentElement;
+    root.classList.add('recolor');
+    clearTimeout(applyTheme.t);
+    applyTheme.t = setTimeout(() => root.classList.remove('recolor'), 900);
+    trayEl.classList.remove('swap'); void trayEl.offsetWidth; trayEl.classList.add('swap');
+    root.dataset.theme = t;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', THEME_COLOR[t]);
+    if (t === 'autumn' && !HUES.includes(mod360(hue))) {
+      // ближайший осенний оттенок
+      const dist = h => Math.min(Math.abs(h - mod360(hue)), 360 - Math.abs(h - mod360(hue)));
+      setHue(HUES.reduce((best, h) => dist(h) < dist(best) ? h : best));
+    }
+    renderBoard(); renderTray();
   }
 
   // ---------- паутина по углам ----------
@@ -484,7 +546,7 @@
   (function leaves() {
     if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const box = $('leaves');
-    const ICONS = ['🍂', '🍁', '🍂', '🍁', '🍂', '🍁', '🍃', '🎃', '🦇'];
+    const ICONS = ['🍂', '🍁', '🍂', '🍁', '🍂', '🍁', '🎃', '🦇'];
     for (let i = 0; i < 16; i++) {
       const el = document.createElement('span');
       const icon = ICONS[Math.floor(Math.random() * ICONS.length)];
@@ -557,6 +619,7 @@
   function gameOver() {
     over = true;
     sfx.over();
+    fadeMusic(1.6);
     finalEl.textContent = score;
     overEl.classList.add('show');
     lsDel(SAVE_KEY);
@@ -663,7 +726,13 @@
 
   // ---------- настройки ----------
   const settingsEl = $('settings'), swMusic = $('swMusic'), swSfx = $('swSfx');
+  const swTheme = $('swTheme');
+  swTheme.addEventListener('click', () => {
+    applyTheme(theme === 'autumn' ? 'standard' : 'autumn');
+    syncSwitches();
+  });
   const syncSwitches = () => {
+    swTheme.classList.toggle('on', theme === 'autumn'); swTheme.setAttribute('aria-checked', theme === 'autumn');
     swMusic.classList.toggle('on', musicOn); swMusic.setAttribute('aria-checked', musicOn);
     swSfx.classList.toggle('on', sfxOn); swSfx.setAttribute('aria-checked', sfxOn);
   };
