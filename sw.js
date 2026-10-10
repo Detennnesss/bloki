@@ -1,5 +1,5 @@
 // Service worker: сначала сеть (чтобы твои правки подхватывались), без сети - из кэша.
-const CACHE = 'blocks-v1';
+const CACHE = 'blocks-v2';
 const FILES = ['./', 'index.html', 'game.js', 'manifest.json', 'icon-180.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {

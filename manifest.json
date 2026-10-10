@@ -1,12 +1,12 @@
 {
-  "name": "Блоки",
-  "short_name": "Блоки",
+  "name": "bloki",
+  "short_name": "bloki",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#141a3a",
-  "theme_color": "#141a3a",
+  "background_color": "#1c120d",
+  "theme_color": "#1c120d",
   "icons": [
     { "src": "icon-180.png", "sizes": "180x180", "type": "image/png" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
