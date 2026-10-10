@@ -91,7 +91,19 @@
     box-shadow: var(--glass-shadow);
     -webkit-backdrop-filter: blur(18px) saturate(180%); backdrop-filter: blur(18px) saturate(180%);
   }
-  #restart { font-size: 22px; width: 48px; height: 48px; padding: 0; border-radius: 50%; }
+  #restart, #settingsBtn { font-size: 22px; width: 48px; height: 48px; padding: 0; border-radius: 50%; }
+  .ctrls { display: flex; gap: 8px; }
+  .set-row { display: flex; justify-content: space-between; align-items: center; gap: 36px; margin: 0 0 18px; font-size: 19px; }
+  .card button.sw {
+    width: 54px; height: 32px; padding: 0; border-radius: 999px; position: relative; flex: none;
+    background: var(--glass-bg); font-size: 0; text-shadow: none;
+  }
+  .card button.sw::after {
+    content: ''; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%;
+    background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.35); transition: transform .2s ease;
+  }
+  .card button.sw.on { background: linear-gradient(160deg, rgba(120,255,170,.75), rgba(40,190,110,.65)); }
+  .card button.sw.on::after { transform: translateX(22px); }
   #boardwrap { position: relative; }
   #board {
     display: grid; gap: 2px; padding: 6px; border-radius: 28px;
@@ -183,7 +195,10 @@
 <div id="app">
   <header id="header">
     <div class="box"><span>СЧЁТ</span><b id="score">0</b></div>
-    <button id="restart" aria-label="Заново">↻</button>
+    <div class="ctrls">
+      <button id="settingsBtn" aria-label="Настройки">⚙</button>
+      <button id="restart" aria-label="Заново">↻</button>
+    </div>
     <div class="box"><span>РЕКОРД</span><b id="best">0</b></div>
   </header>
   <div id="boardwrap">
@@ -196,6 +211,14 @@
   <div class="card">
     <h1>bloki</h1>
     <button id="startBtn">Старт</button>
+  </div>
+</div>
+<div id="settings" class="overlay">
+  <div class="card">
+    <h2>Настройки</h2>
+    <div class="set-row"><span>Музыка</span><button class="sw" id="swMusic" role="switch" aria-label="Музыка"></button></div>
+    <div class="set-row"><span>Звуковые эффекты</span><button class="sw" id="swSfx" role="switch" aria-label="Звуковые эффекты"></button></div>
+    <button id="settingsClose">Готово</button>
   </div>
 </div>
 <div id="over" class="overlay">
